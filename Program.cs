@@ -7,20 +7,18 @@ namespace WarehouseProject
     {
         static void Main(string[] args)
         {
-            // Настройка консоли для корректного отображения
             Console.OutputEncoding = System.Text.Encoding.UTF8;
-            Console.Title = "Warehouse System Project";
+            Console.Title = "Система учета склада";
 
             try
             {
-                // Создаем экземпляр системы и запускаем
                 WarehouseSystem system = new WarehouseSystem();
                 system.Run();
             }
             catch (Exception ex)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Critical Error: " + ex.Message);
+                Console.WriteLine("Критическая ошибка: " + ex.Message);
                 Console.ReadLine();
             }
         }
