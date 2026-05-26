@@ -40,7 +40,7 @@ namespace WarehouseProject.Logic
                     case "9": SortMenu(); break;
                     case "0": isRunning = false; break;
                     default:
-                        _ui.WriteError("Invalid choice!");
+                        _ui.WriteError("Неверный выбор! Попробуйте снова.");
                         _ui.WaitForInput();
                         break;
                 }
@@ -49,106 +49,133 @@ namespace WarehouseProject.Logic
 
         private void DrawMainMenu()
         {
-            _ui.WriteCentered("=== WAREHOUSE SYSTEM ===", true);
+            _ui.DrawLine('=');
+            _ui.WriteCentered("\" СИСТЕМА УЧЕТА СКЛАДА \"", ConsoleColor.Yellow);
+            _ui.DrawLine('=');
+            _ui.DrawSeparator();
             Console.WriteLine();
-            Console.WriteLine(" 1. Add Supplier");
-            Console.WriteLine(" 2. View Suppliers");
-            Console.WriteLine(" 3. Delete Supplier");
-            Console.WriteLine(" ------------------------");
-            Console.WriteLine(" 4. Add Product");
-            Console.WriteLine(" 5. View Products");
-            Console.WriteLine(" 6. Delete Product");
-            Console.WriteLine(" ------------------------");
-            Console.WriteLine(" 7. Search / Filter");
-            Console.WriteLine(" 8. Summary Stats");
-            Console.WriteLine(" 9. Sort Data");
-            Console.WriteLine(" 0. Exit");
+            _ui.WriteCentered("Главное меню:", ConsoleColor.White);
             Console.WriteLine();
-            _ui.WriteCentered("Enter your choice: ");
+            _ui.WriteCentered("- 1 - Добавить поставщика", ConsoleColor.White);
+            _ui.WriteCentered("- 2 - Просмотр поставщиков", ConsoleColor.White);
+            _ui.WriteCentered("- 3 - Удалить поставщика", ConsoleColor.White);
+            _ui.WriteCentered("- 4 - Добавить товар", ConsoleColor.White);
+            _ui.WriteCentered("- 5 - Просмотр товаров", ConsoleColor.White);
+            _ui.WriteCentered("- 6 - Удалить товар", ConsoleColor.White);
+            _ui.WriteCentered("- 7 - Поиск / Фильтрация", ConsoleColor.White);
+            _ui.WriteCentered("- 8 - Статистика", ConsoleColor.White);
+            _ui.WriteCentered("- 9 - Сортировка", ConsoleColor.White);
+            _ui.WriteCentered("- 0 - Выход", ConsoleColor.White);
+            Console.WriteLine();
+            _ui.DrawSeparator();
+            Console.WriteLine();
+            _ui.WriteCentered("Введите номер пункта меню:", ConsoleColor.White);
         }
-
-        // --- SUPPLIER LOGIC ---
 
         private void AddSupplier()
         {
             _ui.ClearScreen();
-            _ui.WriteCentered("ADD SUPPLIER", true);
-            
+            _ui.DrawLine('=');
+            _ui.WriteCentered("\" ДОБАВИТЬ ПОСТАВЩИКА \"", ConsoleColor.Yellow);
+            _ui.DrawLine('=');
+            Console.WriteLine();
+
             var list = _fileManager.LoadSuppliers();
             Supplier s = new Supplier();
             s.Id = list.Count > 0 ? list.Max(x => x.Id) + 1 : 1;
 
-            Console.WriteLine($"ID: {s.Id}");
-            Console.Write("Name: ");
-            s.Name = Console.ReadLine();
-            Console.Write("Phone: ");
-            s.Phone = Console.ReadLine();
+            _ui.WriteCentered($"ID: {s.Id}", ConsoleColor.Cyan);
+            s.Name = _ui.ReadString("Название компании: ", 1, 50);
+            s.Phone = _ui.ReadString("Телефон: ", 1, 20);
 
             list.Add(s);
             _fileManager.SaveSuppliers(list);
-            _ui.WriteSuccess("Row added successfully!");
+            _ui.WriteSuccess("Запись успешно добавлена!");
             _ui.WaitForInput();
         }
 
         private void ViewSuppliers()
         {
             _ui.ClearScreen();
+            _ui.DrawLine('=');
+            _ui.WriteCentered("\" ПРОСМОТР ПОСТАВЩИКОВ \"", ConsoleColor.Yellow);
+            _ui.DrawLine('=');
+            Console.WriteLine();
+
             var list = _fileManager.LoadSuppliers();
-            if (list.Count == 0) { _ui.WriteError("List is empty."); _ui.WaitForInput(); return; }
-
-            _ui.WriteCentered("SUPPLIERS TABLE", true);
-            // Форматирование таблицы с обрезкой
-            string header = $"{"ID",-5} {"Name",-30} {"Phone",-15}";
-            _ui.WriteCentered(header); 
-            Console.WriteLine(new string('-', 50));
-
-            foreach (var s in list)
+            if (list.Count == 0)
             {
-                string row = $"{s.Id,-5} {_ui.FitText(s.Name, 30)} {_ui.FitText(s.Phone, 15)}";
-                Console.WriteLine(row);
+                _ui.WriteError("Список пуст.");
+                _ui.WaitForInput();
+                return;
             }
+
+            string[] headers = { "ID", "Название", "Телефон" };
+            string[] widths = { "5", "30", "15" };
+            string[][] rows = new string[list.Count][];
+
+            for (int i = 0; i < list.Count; i++)
+            {
+                rows[i] = new string[]
+                {
+                    list[i].Id.ToString(),
+                    list[i].Name,
+                    list[i].Phone
+                };
+            }
+
+            WriteTableCentered(headers, widths, rows);
             _ui.WaitForInput();
         }
 
         private void DeleteSupplier()
         {
             _ui.ClearScreen();
-            Console.Write("Enter Supplier ID to delete: ");
-            if (!int.TryParse(Console.ReadLine(), out int id)) return;
+            _ui.DrawLine('=');
+            _ui.WriteCentered("\" УДАЛИТЬ ПОСТАВЩИКА \"", ConsoleColor.Yellow);
+            _ui.DrawLine('=');
+            Console.WriteLine();
+
+            int id = _ui.ReadInt("Введите ID поставщика: ", 1, int.MaxValue);
 
             var list = _fileManager.LoadSuppliers();
             var supplier = list.FirstOrDefault(x => x.Id == id);
 
-            if (supplier.Id == 0) { _ui.WriteError("Not found."); _ui.WaitForInput(); return; }
+            if (supplier.Id == 0)
+            {
+                _ui.WriteError("Поставщик не найден.");
+                _ui.WaitForInput();
+                return;
+            }
 
-            // Проверка связи
             var products = _fileManager.LoadProducts();
             if (products.Any(p => p.SupplierId == id))
             {
-                _ui.WriteError("Cannot delete! Supplier has products.");
+                _ui.WriteError("Нельзя удалить! У этого поставщика есть товары.");
                 _ui.WaitForInput();
                 return;
             }
 
             list.Remove(supplier);
             _fileManager.SaveSuppliers(list);
-            _ui.WriteSuccess("Deleted.");
+            _ui.WriteSuccess("Поставщик удален.");
             _ui.WaitForInput();
         }
-
-        // --- PRODUCT LOGIC ---
 
         private void AddProduct()
         {
             _ui.ClearScreen();
-            _ui.WriteCentered("ADD PRODUCT", true);
+            _ui.DrawLine('=');
+            _ui.WriteCentered("\" ДОБАВИТЬ ТОВАР \"", ConsoleColor.Yellow);
+            _ui.DrawLine('=');
+            Console.WriteLine();
 
             var list = _fileManager.LoadProducts();
             var suppliers = _fileManager.LoadSuppliers();
 
             if (suppliers.Count == 0)
             {
-                _ui.WriteError("No suppliers found! Add supplier first.");
+                _ui.WriteError("Сначала добавьте поставщика!");
                 _ui.WaitForInput();
                 return;
             }
@@ -156,160 +183,242 @@ namespace WarehouseProject.Logic
             Product p = new Product();
             p.Id = list.Count > 0 ? list.Max(x => x.Id) + 1 : 1;
 
-            Console.WriteLine($"ID: {p.Id}");
-            Console.Write("Name: ");
-            p.Name = Console.ReadLine();
-            Console.Write("Quantity: ");
-            int.TryParse(Console.ReadLine(), out p.Quantity);
-            Console.Write("Price: ");
-            double.TryParse(Console.ReadLine(), out p.Price);
+            _ui.WriteCentered($"ID: {p.Id}", ConsoleColor.Cyan);
+            p.Name = _ui.ReadString("Название товара: ", 1, 50);
+            p.Quantity = _ui.ReadInt("Количество: ", 0, 1000000);
+            p.Price = _ui.ReadDouble("Цена: ", 0, 1000000000);
 
-            // Выбор поставщика
-            Console.WriteLine("\nAvailable Suppliers:");
-            foreach(var s in suppliers) Console.WriteLine($"ID: {s.Id} - {s.Name}");
-            
-            Console.Write("Enter Supplier ID: ");
-            int.TryParse(Console.ReadLine(), out p.SupplierId);
+            Console.WriteLine();
+            _ui.WriteCentered("Доступные поставщики:", ConsoleColor.Cyan);
+            foreach (var s in suppliers)
+                _ui.WriteCentered($"ID: {s.Id} - {_ui.FitText(s.Name, 30)}", ConsoleColor.White);
+
+            int maxId = suppliers.Max(s => s.Id);
+            p.SupplierId = _ui.ReadInt("Введите ID поставщика: ", 1, maxId);
 
             if (!suppliers.Any(s => s.Id == p.SupplierId))
             {
-                _ui.WriteError("Invalid Supplier ID!");
+                _ui.WriteError("Поставщик с таким ID не существует!");
                 _ui.WaitForInput();
                 return;
             }
 
             list.Add(p);
             _fileManager.SaveProducts(list);
-            _ui.WriteSuccess("Row added successfully!");
+            _ui.WriteSuccess("Товар успешно добавлен!");
             _ui.WaitForInput();
         }
 
         private void ViewProducts()
         {
             _ui.ClearScreen();
+            _ui.DrawLine('=');
+            _ui.WriteCentered("\" ПРОСМОТР ТОВАРОВ \"", ConsoleColor.Yellow);
+            _ui.DrawLine('=');
+            Console.WriteLine();
+
             var list = _fileManager.LoadProducts();
-            if (list.Count == 0) { _ui.WriteError("List is empty."); _ui.WaitForInput(); return; }
-
-            _ui.WriteCentered("PRODUCTS TABLE", true);
-            string header = $"{"ID",-5} {"Name",-20} {"Qty",-10} {"Price",-10} {"Sup.ID",-10}";
-            _ui.WriteCentered(header);
-            Console.WriteLine(new string('-', 60));
-
-            foreach (var p in list)
+            if (list.Count == 0)
             {
-                string row = $"{p.Id,-5} {_ui.FitText(p.Name, 20)} {p.Quantity,-10} {p.Price,-10:F2} {p.SupplierId,-10}";
-                Console.WriteLine(row);
+                _ui.WriteError("Список пуст.");
+                _ui.WaitForInput();
+                return;
             }
+
+            string[] headers = { "ID", "Название", "Кол-во", "Цена", "ID пост." };
+            string[] widths = { "5", "20", "10", "10", "10" };
+            string[][] rows = new string[list.Count][];
+
+            for (int i = 0; i < list.Count; i++)
+            {
+                rows[i] = new string[]
+                {
+                    list[i].Id.ToString(),
+                    list[i].Name,
+                    list[i].Quantity.ToString(),
+                    list[i].Price.ToString("F2"),
+                    list[i].SupplierId.ToString()
+                };
+            }
+
+            WriteTableCentered(headers, widths, rows);
             _ui.WaitForInput();
         }
 
         private void DeleteProduct()
         {
             _ui.ClearScreen();
-            Console.Write("Enter Product ID to delete: ");
-            if (!int.TryParse(Console.ReadLine(), out int id)) return;
+            _ui.DrawLine('=');
+            _ui.WriteCentered("\" УДАЛИТЬ ТОВАР \"", ConsoleColor.Yellow);
+            _ui.DrawLine('=');
+            Console.WriteLine();
+
+            int id = _ui.ReadInt("Введите ID товара: ", 1, int.MaxValue);
 
             var list = _fileManager.LoadProducts();
             var prod = list.FirstOrDefault(x => x.Id == id);
 
-            if (prod.Id == 0) { _ui.WriteError("Not found."); _ui.WaitForInput(); return; }
+            if (prod.Id == 0)
+            {
+                _ui.WriteError("Товар не найден.");
+                _ui.WaitForInput();
+                return;
+            }
 
             list.Remove(prod);
             _fileManager.SaveProducts(list);
-            _ui.WriteSuccess("Deleted.");
+            _ui.WriteSuccess("Товар удален.");
             _ui.WaitForInput();
         }
 
-        // --- SEARCH (3 Criteria) ---
         private void SearchMenu()
         {
             _ui.ClearScreen();
-            _ui.WriteCentered("SEARCH MENU", true);
-            Console.WriteLine("1. By ID");
-            Console.WriteLine("2. By Name (Exact)");
-            Console.WriteLine("3. Price Greater Than");
-            Console.Write("Choice: ");
-            string ch = Console.ReadLine();
+            _ui.DrawLine('=');
+            _ui.WriteCentered("\" ПОИСК И ФИЛЬТРАЦИЯ \"", ConsoleColor.Yellow);
+            _ui.DrawLine('=');
+            Console.WriteLine();
+
+            _ui.WriteCentered("- 1 - По ID", ConsoleColor.White);
+            _ui.WriteCentered("- 2 - По названию", ConsoleColor.White);
+            _ui.WriteCentered("- 3 - Цена больше чем", ConsoleColor.White);
+            Console.WriteLine();
+
+            int choice = _ui.ReadInt("Выберите критерий: ", 1, 3);
 
             var products = _fileManager.LoadProducts();
             List<Product> result = new List<Product>();
 
-            if (ch == "1")
+            if (choice == 1)
             {
-                Console.Write("Enter ID: ");
-                if(int.TryParse(Console.ReadLine(), out int id))
-                    result = products.Where(p => p.Id == id).ToList();
+                int id = _ui.ReadInt("Введите ID: ", 1, int.MaxValue);
+                result = products.Where(p => p.Id == id).ToList();
             }
-            else if (ch == "2")
+            else if (choice == 2)
             {
-                Console.Write("Enter Name: ");
-                string name = Console.ReadLine();
-                result = products.Where(p => p.Name == name).ToList();
+                string name = _ui.ReadString("Введите название: ", 1, 50);
+                result = products.Where(p => p.Name.Contains(name)).ToList();
             }
-            else if (ch == "3")
+            else if (choice == 3)
             {
-                Console.Write("Min Price: ");
-                if(double.TryParse(Console.ReadLine(), out double price))
-                    result = products.Where(p => p.Price > price).ToList();
+                double minPrice = _ui.ReadDouble("Минимальная цена: ", 0, 1000000000);
+                result = products.Where(p => p.Price > minPrice).ToList();
             }
 
             _ui.ClearScreen();
-            if (result.Count == 0) _ui.WriteError("Nothing found.");
+            _ui.DrawLine('=');
+            _ui.WriteCentered("\" РЕЗУЛЬТАТЫ ПОИСКА \"", ConsoleColor.Yellow);
+            _ui.DrawLine('=');
+            Console.WriteLine();
+
+            if (result.Count == 0)
+                _ui.WriteError("Ничего не найдено.");
             else
             {
-                _ui.WriteSuccess("Results:");
-                foreach(var p in result)
-                    Console.WriteLine($"ID: {p.Id} | {p.Name} | {p.Price} rub.");
+                _ui.WriteSuccess($"Найдено записей: {result.Count}", ConsoleColor.Green);
+                Console.WriteLine();
+                foreach (var p in result)
+                    _ui.WriteCentered($"ID: {p.Id} | {_ui.FitText(p.Name, 30)} | {p.Price} руб.", ConsoleColor.White);
             }
             _ui.WaitForInput();
         }
 
-        // --- SUMMARY (2 Characteristics) ---
         private void SummaryMenu()
         {
             _ui.ClearScreen();
+            _ui.DrawLine('=');
+            _ui.WriteCentered("\" СТАТИСТИКА \"", ConsoleColor.Yellow);
+            _ui.DrawLine('=');
+            Console.WriteLine();
+
             var products = _fileManager.LoadProducts();
-            if (products.Count == 0) { _ui.WriteError("No data."); _ui.WaitForInput(); return; }
+            if (products.Count == 0)
+            {
+                _ui.WriteError("Нет данных для статистики.");
+                _ui.WaitForInput();
+                return;
+            }
 
             double totalValue = products.Sum(p => p.Price * p.Quantity);
             int totalCount = products.Sum(p => p.Quantity);
+            double avgPrice = products.Average(p => p.Price);
 
-            _ui.WriteCentered("SUMMARY STATISTICS", true);
-            Console.WriteLine($"1. Total Warehouse Value: {totalValue:F2} rub.");
-            Console.WriteLine($"2. Total Items Count:     {totalCount} pcs.");
-            
+            _ui.WriteCentered($"Общая стоимость склада: {totalValue:F2} руб.", ConsoleColor.Cyan);
+            _ui.WriteCentered($"Всего единиц товара: {totalCount} шт.", ConsoleColor.Cyan);
+            _ui.WriteCentered($"Средняя цена товара: {avgPrice:F2} руб.", ConsoleColor.Cyan);
+
             _ui.WaitForInput();
         }
 
-        // --- SORTING ---
         private void SortMenu()
         {
             _ui.ClearScreen();
-            _ui.WriteCentered("SORT MENU", true);
-            Console.WriteLine("1. Price ASC");
-            Console.WriteLine("2. Price DESC");
-            Console.WriteLine("3. Name A-Z");
-            Console.Write("Choice: ");
-            string ch = Console.ReadLine();
+            _ui.DrawLine('=');
+            _ui.WriteCentered("\" СОРТИРОВКА \"", ConsoleColor.Yellow);
+            _ui.DrawLine('=');
+            Console.WriteLine();
+
+            _ui.WriteCentered("- 1 - По цене (по возрастанию)", ConsoleColor.White);
+            _ui.WriteCentered("- 2 - По цене (по убыванию)", ConsoleColor.White);
+            _ui.WriteCentered("- 3 - По названию (А-Я)", ConsoleColor.White);
+            _ui.WriteCentered("- 4 - По количеству (по убыванию)", ConsoleColor.White);
+            Console.WriteLine();
+
+            int choice = _ui.ReadInt("Выберите критерий: ", 1, 4);
 
             var list = _fileManager.LoadProducts();
-            if (list.Count == 0) return;
+            if (list.Count == 0)
+            {
+                _ui.WriteError("Список пуст.");
+                _ui.WaitForInput();
+                return;
+            }
 
             List<Product> sorted = new List<Product>();
 
-            if (ch == "1") sorted = list.OrderBy(p => p.Price).ToList();
-            else if (ch == "2") sorted = list.OrderByDescending(p => p.Price).ToList();
-            else if (ch == "3") sorted = list.OrderBy(p => p.Name).ToList();
-            else return;
+            if (choice == 1)
+                sorted = list.OrderBy(p => p.Price).ToList();
+            else if (choice == 2)
+                sorted = list.OrderByDescending(p => p.Price).ToList();
+            else if (choice == 3)
+                sorted = list.OrderBy(p => p.Name).ToList();
+            else if (choice == 4)
+                sorted = list.OrderByDescending(p => p.Quantity).ToList();
 
             _ui.ClearScreen();
-            _ui.WriteSuccess("Sorted Successfully!");
-            Console.WriteLine(new string('-', 40));
+            _ui.DrawLine('=');
+            _ui.WriteCentered("\" ОТСОРТИРОВАНО \"", ConsoleColor.Yellow);
+            _ui.DrawLine('=');
+            Console.WriteLine();
+
             foreach (var p in sorted)
-            {
-                Console.WriteLine($"{p.Id,-5} {_ui.FitText(p.Name, 20)} {p.Price,10} rub.");
-            }
+                _ui.WriteCentered($"{p.Id,-5} {_ui.FitText(p.Name, 25)} {p.Price,10} руб.", ConsoleColor.White);
+
             _ui.WaitForInput();
+        }
+
+        private void WriteTableCentered(string[] headers, string[] widths, string[][] rows)
+        {
+            int totalWidth = 0;
+            foreach (var w in widths)
+                totalWidth += int.Parse(w) + 1;
+
+            string headerLine = "";
+            for (int i = 0; i < headers.Length; i++)
+                headerLine += headers[i].PadRight(int.Parse(widths[i]) + 1);
+
+            _ui.WriteCenteredPlain(headerLine);
+
+            string separator = new string('-', totalWidth);
+            _ui.WriteCenteredPlain(separator);
+
+            foreach (var row in rows)
+            {
+                string rowLine = "";
+                for (int i = 0; i < row.Length; i++)
+                    rowLine += _ui.FitText(row[i], int.Parse(widths[i])).PadRight(int.Parse(widths[i]) + 1);
+                _ui.WriteCenteredPlain(rowLine);
+            }
         }
     }
 }
